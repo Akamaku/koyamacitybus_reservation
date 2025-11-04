@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width="device-width, inital-scale="1">
+        <title>狐山市交通局 車両予約サイト</title>
+        <meta name="description" content="狐山市交通局一部車両予約サイト">
+        <link rel="stylesheet" href="styles.css">    
+    </head>
+    
+    <header class="site-header">
+        <a class="brand" href="index.html">
+            狐山市交通局一部車両予約サイト
+        </a>
+        <nav class="site-nav">
+            <a href="shinmachi.html">新町営業所</a>
+            <a href="kitano.html">喜多野営業所</a>
+            <a href="katakami.html">片上営業所</a>
+        </nav>
+        </header>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>車両予約フォーム</title>
+<style>
+  body { font-family: "Hiragino Kaku Gothic ProN", sans-serif; padding: 2em; }
+  form { max-width: 420px; display: grid; gap: 1em; margin-bottom: 2em; }
+  label { display: grid; gap: .3em; }
+  select, input, button { padding: .6em; font-size: 1em; }
+  #result, #checkResult { margin-top: 1em; white-space: pre-wrap; border: 1px solid #ccc; padding: 1em; }
+</style>
+</head>
+<body>
+<h1>K-R902号車予約サイト</h1>
+
+<form id="reserveForm">
+  <label>車両：
+    <select name="car" required>
+      <option value="">選択してください</option>
+      <option value="K-R902">K-R0902号車</option>
+    </select>
+  </label>
+
+  <label>日付：
+    <input type="date" name="date" id="date" required>
+  </label>
+
+  <label>開始時刻：
+    <select id="start" name="start" required></select>
+  </label>
+
+  <label>終了時刻：
+    <select id="end" name="end" required></select>
+  </label>
+
+  <label>お名前：
+    <input name="name" required>
+  </label>
+
+  <button type="submit">予約する</button>
+</form>
+
+<div id="result"></div>
+
+<hr>
+
+<h2>予約確認</h2>
+<form id="checkForm">
+  <label>予約パスワード：
+    <input id="checkPass" required>
+  </label>
+  <button type="submit">確認する</button>
+</form>
+
+<div id="checkResult"></div>
+
+<script>
+const dateInput = document.getElementById('date');
+const startSel = document.getElementById('start');
+const endSel = document.getElementById('end');
+const result = document.getElementById('result');
+const checkResult = document.getElementById('checkResult');
+
+// --- 日付入力の下限を今日に設定（過去不可） ---
+const today = new Date();
+const yyyy = today.getFullYear();
+const mm = String(today.getMonth() + 1).padStart(2, '0');
+const dd = String(today.getDate()).padStart(2, '0');
+const todayStr = `${yyyy}-${mm}-${dd}`;
+dateInput.min = todayStr;
+
+// --- 時刻リストを生成（0,15,30,45分刻み） ---
+function generateTimes() {
+  startSel.innerHTML = "";
+  endSel.innerHTML = "";
+  for (let h = 0; h < 24; h++) {
+    for (let m of [0,15,30,45]) {
+      const t = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      startSel.add(new Option(t, t));
+      endSel.add(new Option(t, t));
+    }
+  }
+}
+generateTimes();
+
+// --- 予約フォーム送信 ---
+document.getElementById('reserveForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const fd = new FormData(e.target);
+  const car = fd.get('car');
+  const date = fd.get('date');
+  const start = fd.get('start');
+  const end = fd.get('end');
+  const name = fd.get('name');
+
+  // --- 入力検証 ---
+  if (end <= start) {
+    alert("終了時刻は開始時刻より後を選択してください");
+    return;
+  }
+
+  // --- 現在より過去の日時は予約不可 ---
+  const now = new Date();
+  const startDateTime = new Date(`${date}T${start}`);
+  if (startDateTime < now) {
+    alert("過去の日時は予約できません");
+    return;
+  }
+
+  // --- ランダムパスワード発行 ---
+  const pass = Math.random().toString(36).slice(-6).toUpperCase();
+
+  // --- ローカルに保存 ---
+  const reservations = JSON.parse(localStorage.getItem('reservations') || '[]');
+  reservations.push({ car, date, start, end, name, pass });
+  localStorage.setItem('reservations', JSON.stringify(reservations));
+
+  // --- 結果表示 ---
+  result.textContent = 
+`予約が完了しました！
+----------------------------
+車両：${car}
+日付：${date}
+開始：${start}
+終了：${end}
+お名前：${name}
+予約パスワード：${pass}
+----------------------------
+このパスワードで予約確認ができます。`;
+
+  e.target.reset();
+});
+
+// --- 予約確認フォーム ---
+document.getElementById('checkForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const pass = document.getElementById('checkPass').value.trim().toUpperCase();
+  const reservations = JSON.parse(localStorage.getItem('reservations') || '[]');
+  const found = reservations.find(r => r.pass === pass);
+
+  if (found) {
+    checkResult.textContent = 
+`予約内容が見つかりました。
+----------------------------
+車両：${found.car}
+日付：${found.date}
+開始：${found.start}
+終了：${found.end}
+お名前：${found.name}
+予約パスワード：${found.pass}`;
+  } else {
+    checkResult.textContent = "該当する予約が見つかりません。";
+  }
+});
+</script>
+</body>
+</html>
