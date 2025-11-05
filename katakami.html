@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>狐山市交通局 片上営業所 車両予約</title>
+<title>狐山市交通局 車両予約サイト</title>
+<meta name="description" content="狐山市交通局一部車両予約サイト">
 <link rel="stylesheet" href="styles.css">
 <style>
   body { font-family: "Hiragino Kaku Gothic ProN", sans-serif; padding: 2em; }
@@ -26,7 +27,7 @@
   </nav>
 </header>
 
-<h1>片上営業所 車両予約</h1>
+<h1>片上営業所 一部車両予約</h1>
 
 <form id="reserveForm">
   <label>車両：
@@ -70,11 +71,16 @@
 <div id="checkResult"></div>
 
 <script>
-const apiURL = "https://script.google.com/macros/s/AKfycbwXbvHYKoj1BGYPsgL9ugT2cbRxeCFcnUw1bOoJpAcQQWjV_5UtzoaN1tRbx5jRbr61uA/exec";
+const apiURL = "https://script.google.com/macros/s/AKfycbw4bRgAV1M2qk9rJXp_tIC0KPfZvC_4RLbk0ehmVIVBpr7oOH-rR4SFcCDy3thHODtb5w/exec"; 
 const office = "片上営業所";
 
-// --- 今日以降しか選べない ---
 const dateInput = document.getElementById('date');
+const startSel = document.getElementById('start');
+const endSel = document.getElementById('end');
+const result = document.getElementById('result');
+const checkResult = document.getElementById('checkResult');
+
+// --- 今日以降しか選べない ---
 const today = new Date();
 const yyyy = today.getFullYear();
 const mm = String(today.getMonth() + 1).padStart(2, '0');
@@ -82,8 +88,6 @@ const dd = String(today.getDate()).padStart(2, '0');
 dateInput.min = `${yyyy}-${mm}-${dd}`;
 
 // --- 時刻リスト生成（0,15,30,45分刻み） ---
-const startSel = document.getElementById('start');
-const endSel = document.getElementById('end');
 function generateTimes() {
   for (let h = 0; h < 24; h++) {
     for (let m of [0,15,30,45]) {
@@ -96,7 +100,7 @@ function generateTimes() {
 generateTimes();
 
 // --- 予約送信 ---
-document.getElementById('reserveForm').addEventListener('submit', async (e) => {
+document.getElementById('reserveForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const fd = new FormData(e.target);
   const car = fd.get('car');
@@ -105,21 +109,29 @@ document.getElementById('reserveForm').addEventListener('submit', async (e) => {
   const end = fd.get('end');
   const name = fd.get('name');
 
-  if (end <= start) return alert("終了時刻は開始時刻より後を選んでください");
+  if (end <= start) {
+    alert("終了時刻は開始時刻より後を選んでください。");
+    return;
+  }
+
   const now = new Date();
-  if (new Date(`${date}T${start}`) < now) return alert("過去の時間は予約できません");
+  const startDateTime = new Date(`${date}T${start}`);
+  if (startDateTime < now) {
+    alert("過去の日時は予約できません。");
+    return;
+  }
 
   const pass = Math.random().toString(36).slice(-6).toUpperCase();
 
-  const res = await fetch(apiURL, {
+  fetch(apiURL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ office, car, date, start, end, name, pass })
-  });
-  const data = await res.json();
-
-  if (data.ok) {
-    result.textContent =
+  })
+  .then(r => r.json())
+  .then(res => {
+    if (res.ok) {
+      result.textContent = 
 `予約が完了しました！
 ----------------------------
 営業所：${office}
@@ -128,14 +140,16 @@ document.getElementById('reserveForm').addEventListener('submit', async (e) => {
 開始：${start}
 終了：${end}
 お名前：${name}
-予約番号：${data.id}
+予約番号：${res.id}
 パスワード：${pass}
 ----------------------------
 このパスワードで予約確認ができます。`;
-    e.target.reset();
-  } else {
-    alert("エラーが発生しました。");
-  }
+      e.target.reset();
+    } else {
+      alert("送信エラーが発生しました。");
+    }
+  })
+  .catch(() => alert("通信エラーが発生しました。"));
 });
 
 // --- 予約確認 ---
@@ -146,11 +160,12 @@ document.getElementById('checkForm').addEventListener('submit', async (e) => {
 
   const res = await fetch(`${apiURL}?pass=${encodeURIComponent(pass)}`);
   const data = await res.json();
+
   if (data.ok) {
-    checkResult.textContent =
-`予約内容が見つかりました。
+    checkResult.textContent = 
+`予約が見つかりました。
 ----------------------------
-営業所：${data.office}
+営業所：${office}
 車両：${data.car}
 日付：${data.date}
 開始：${data.start}
@@ -164,4 +179,3 @@ document.getElementById('checkForm').addEventListener('submit', async (e) => {
 </script>
 </body>
 </html>
-
