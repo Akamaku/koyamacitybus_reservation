@@ -39,7 +39,7 @@
     </select>
   </label>
 
-  <label>日付：
+   <label>日付：
     <input type="date" name="date" id="date" required>
   </label>
 
@@ -62,7 +62,7 @@
 
 <hr>
 
-<h2>予約確認</h2>
+<h2>🔍 予約確認</h2>
 <form id="checkForm">
   <label>予約パスワード：
     <input id="checkPass" required>
@@ -73,21 +73,24 @@
 <div id="checkResult"></div>
 
 <script>
-const apiURL = "https://script.google.com/macros/s/AKfycbwXbvHYKoj1BGYPsgL9ugT2cbRxeCFcnUw1bOoJpAcQQWjV_5UtzoaN1tRbx5jRbr61uA/exec";
-const office = "喜多野営業所";
-
-// --- 日付の最小値を今日に ---
 const dateInput = document.getElementById('date');
+const startSel = document.getElementById('start');
+const endSel = document.getElementById('end');
+const result = document.getElementById('result');
+const checkResult = document.getElementById('checkResult');
+
+// --- 日付入力の下限を今日に設定（過去不可） ---
 const today = new Date();
 const yyyy = today.getFullYear();
 const mm = String(today.getMonth() + 1).padStart(2, '0');
 const dd = String(today.getDate()).padStart(2, '0');
-dateInput.min = `${yyyy}-${mm}-${dd}`;
+const todayStr = `${yyyy}-${mm}-${dd}`;
+dateInput.min = todayStr;
 
-// --- 時刻リスト（15分刻み） ---
-const startSel = document.getElementById('start');
-const endSel = document.getElementById('end');
+// --- 時刻リストを生成（0,15,30,45分刻み） ---
 function generateTimes() {
+  startSel.innerHTML = "";
+  endSel.innerHTML = "";
   for (let h = 0; h < 24; h++) {
     for (let m of [0,15,30,45]) {
       const t = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
@@ -98,8 +101,8 @@ function generateTimes() {
 }
 generateTimes();
 
-// --- 予約送信 ---
-document.getElementById('reserveForm').addEventListener('submit', async (e) => {
+// --- 予約フォーム送信 ---
+document.getElementById('reserveForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const fd = new FormData(e.target);
   const car = fd.get('car');
@@ -108,58 +111,61 @@ document.getElementById('reserveForm').addEventListener('submit', async (e) => {
   const end = fd.get('end');
   const name = fd.get('name');
 
-  if (end <= start) return alert("終了時刻は開始時刻より後を選んでください");
-  const now = new Date();
-  if (new Date(`${date}T${start}`) < now) return alert("過去の時間は予約できません");
+  // --- 入力検証 ---
+  if (end <= start) {
+    alert("終了時刻は開始時刻より後を選択してください");
+    return;
+  }
 
+  // --- 現在より過去の日時は予約不可 ---
+  const now = new Date();
+  const startDateTime = new Date(`${date}T${start}`);
+  if (startDateTime < now) {
+    alert("過去の日時は予約できません");
+    return;
+  }
+
+  // --- ランダムパスワード発行 ---
   const pass = Math.random().toString(36).slice(-6).toUpperCase();
 
-  const res = await fetch(apiURL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ office, car, date, start, end, name, pass })
-  });
-  const data = await res.json();
+  // --- ローカルに保存 ---
+  const reservations = JSON.parse(localStorage.getItem('reservations') || '[]');
+  reservations.push({ car, date, start, end, name, pass });
+  localStorage.setItem('reservations', JSON.stringify(reservations));
 
-  if (data.ok) {
-    result.textContent =
+  // --- 結果表示 ---
+  result.textContent = 
 `予約が完了しました！
 ----------------------------
-営業所：${office}
 車両：${car}
 日付：${date}
 開始：${start}
 終了：${end}
 お名前：${name}
-予約番号：${data.id}
-パスワード：${pass}
+予約パスワード：${pass}
 ----------------------------
 このパスワードで予約確認ができます。`;
-    e.target.reset();
-  } else {
-    alert("エラーが発生しました。");
-  }
+
+  e.target.reset();
 });
 
-// --- 予約確認 ---
-document.getElementById('checkForm').addEventListener('submit', async (e) => {
+// --- 予約確認フォーム ---
+document.getElementById('checkForm').addEventListener('submit', (e) => {
   e.preventDefault();
   const pass = document.getElementById('checkPass').value.trim().toUpperCase();
-  if (!pass) return;
+  const reservations = JSON.parse(localStorage.getItem('reservations') || '[]');
+  const found = reservations.find(r => r.pass === pass);
 
-  const res = await fetch(`${apiURL}?pass=${encodeURIComponent(pass)}`);
-  const data = await res.json();
-  if (data.ok) {
-    checkResult.textContent =
+  if (found) {
+    checkResult.textContent = 
 `予約内容が見つかりました。
 ----------------------------
-営業所：${data.office}
-車両：${data.car}
-日付：${data.date}
-開始：${data.start}
-終了：${data.end}
-お名前：${data.name}
-予約番号：${data.id}`;
+車両：${found.car}
+日付：${found.date}
+開始：${found.start}
+終了：${found.end}
+お名前：${found.name}
+予約パスワード：${found.pass}`;
   } else {
     checkResult.textContent = "該当する予約が見つかりません。";
   }
@@ -167,4 +173,3 @@ document.getElementById('checkForm').addEventListener('submit', async (e) => {
 </script>
 </body>
 </html>
-

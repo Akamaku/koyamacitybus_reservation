@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>狐山市交通局 片上営業所 車両予約</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  body { font-family: "Hiragino Kaku Gothic ProN", sans-serif; padding: 2em; }
+  form { max-width: 420px; display: grid; gap: 1em; margin-bottom: 2em; }
+  label { display: grid; gap: .3em; }
+  select, input, button { padding: .6em; font-size: 1em; }
+  #result, #checkResult { margin-top: 1em; white-space: pre-wrap; border: 1px solid #ccc; padding: 1em; }
+  header { margin-bottom: 2em; }
+  nav a { margin-right: 1em; text-decoration: none; }
+</style>
+</head>
+<body>
+<header class="site-header">
+  <a class="brand" href="index.html">狐山市交通局一部車両予約サイト</a>
+  <nav class="site-nav">
+    <a href="shinmachi.html">新町営業所</a>
+    <a href="kitano.html">喜多野営業所</a>
+    <a href="katakami.html">片上営業所</a>
+  </nav>
+</header>
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>予約キャンセル</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<h1>予約キャンセル</h1>
+
+<form id="cancelForm">
+  <label>キャンセルパスワード：
+    <input name="pass" required>
+  </label>
+  <button type="submit">キャンセルする</button>
+</form>
+
+<div id="cancelResult"></div>
+
+<script>
+const apiURL = "https://script.google.com/macros/s/AKfycbwXbvHYKoj1BGYPsgL9ugT2cbRxeCFcnUw1bOoJpAcQQWjV_5UtzoaN1tRbx5jRbr61uA/exec";
+
+document.getElementById('cancelForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const pass = e.target.pass.value.trim();
+
+  const res = await fetch(apiURL + "?cancel=" + pass);
+  const json = await res.json();
+
+  if (json.ok) {
+    cancelResult.textContent = "予約をキャンセルしました ✅";
+  } else {
+    cancelResult.textContent = "該当する予約が見つかりませんでした。";
+  }
+});
+</script>
+
+</body>
+</html>
